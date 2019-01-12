@@ -1,5 +1,5 @@
 /*Name & E-mail: Robert Arenas, raren003@ucr.edu
-* Partner(s) Name & E-mail:
+* Partner(s) Name & E-mail: Noah Marestaing, nmare001@ucr.edu
 * Lab Section: 022
 * Assignment: Lab #2 Exercise #1
 * Exercise Description: [optional - include for your own benefit]
