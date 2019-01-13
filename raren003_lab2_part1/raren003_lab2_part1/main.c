@@ -22,10 +22,10 @@ int main(void)
 		// 1) Read input
 		tmpA = PINA;
 		if(tmpA == 0x01){
-			tmpB = (tmpB & 0x00) | 0x01;
+			tmpB = (tmpB & 0x00) | 0x01; //sets PB0 to 1 if input on PORTA is 0000 0001
 		}
 		else{
-			tmpB = (tmpB & 0x00) | 0x00;
+			tmpB = (tmpB & 0x00) | 0x00; //sets PB0 to 0 if input on PORTA is 0000 0000, 0000 0010, or 0000 0011
 		}
 		
 		//write output
