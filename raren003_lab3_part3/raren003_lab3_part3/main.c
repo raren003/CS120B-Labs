@@ -42,8 +42,8 @@ int main(void)
 		if ((tmpA  & 0x0F) >= 13) uc_cOut = SetBit(uc_cOut, 0, 1);
 		if ((tmpA  & 0x0F) <= 4) uc_cOut = SetBit(uc_cOut, 6, 1);
 		
-		//sets PC7 to 1, if a key is in the ignition (P4), the driver is seated (P5), 
-		//but the belt is not fastened (P6), aka (P4 && P5 && !P6)
+		//sets PC7 to 1, if a key is in the ignition (PA4), the driver is seated (PA5), 
+		//but the belt is not fastened (PA6), aka (PA4 && PA5 && !PA6)
 		if(GetBit(tmpA, 4) &&  GetBit(tmpA, 5) && !GetBit(tmpA, 6)){
 			 uc_cOut = SetBit(uc_cOut, 7, 1);
 		}else{
