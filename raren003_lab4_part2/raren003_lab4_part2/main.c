@@ -11,7 +11,11 @@
 
 enum States {Start, INIT, WAIT, INCREMENT, DECREMENT, RESET} state;
 	
+unsigned char tmpC = 0x07;
+	
 void Tick(){
+	
+	
 	switch(state) {				//transitions
 		case Start:
 			state = INIT;
@@ -26,9 +30,9 @@ void Tick(){
 				state = WAIT;
 			}else if((PINA & 0x01) && (PINA & 0x02)){ //A0 && A1
 				state = RESET;
-			}else if((PINA & 0x01) && !(PINA & 0x02)){
+			}else if((PINA & 0x01) && !(PINA & 0x02)){ //A0 && !A1
 				state = INCREMENT;
-			}else if(!(PINA & 0x01) && (PINA & 0x02)){
+			}else if(!(PINA & 0x01) && (PINA & 0x02)){ //!A0 && A1
 				state = DECREMENT;
 			}
 			break;
@@ -41,11 +45,46 @@ void Tick(){
 			state = WAIT;
 			break;
 		
+		case RESET:
+			state = WAIT;
+			break;
+		
 		default:
 			break;
 	}							//transitions
 	
-	
+	switch(state){				//state actions
+		case INIT:
+			PORTC = tmpC;
+			break;
+			
+		case WAIT:
+			break;
+		
+		case INCREMENT:
+			if (tmpC < 0x09)
+			{
+				tmpC = tmpC + 1;
+			}
+			PORTC = tmpC;
+			break;
+		
+		case DECREMENT:
+			if (tmpC > 0x00)
+			{
+				tmpC = tmpC -1;
+			}
+			PORTC = tmpC;
+			break;
+			
+		case RESET:
+			tmpC = 0x00;
+			PORTC = tmpC;
+			break;
+			
+		default:
+			break;
+	}								//state actions
 }
 
 int main(void)
