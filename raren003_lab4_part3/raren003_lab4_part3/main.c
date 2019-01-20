@@ -11,7 +11,6 @@
 
 enum States {Start, Init, One, Two, Unlocked} state;
 
-unsigned char tmpC = 0x07;
 
 void Tick(){
 	
@@ -22,24 +21,24 @@ void Tick(){
 		break;
 		
 		case Init:
-		if (PINA & 0x04) state = One;
+		if (PINA == 0x04) state = One;
 		break;
 		
 		case One:
-		if ((PINA & 0x02) || (PINA & 0x80)) state = Init;
-		else if (!(PINA & 0x04)) state = Two;
+		if ((PINA & 0x02) || (PINA & 0x80) || (PINA == 0x03)) state = Init;
+		else if ((PINA == 0x00)) state = Two;
 		break;
 		
 		case Two:
-		if ((PINA & 0x04) || (PINA & 0x80) || (PINA & 0x04)) state = Init;
-		else if (PINA & 0x02) state = Unlocked;
+		if ((PINA & 0x04) || (PINA & 0x80) || (PINA & 0x04) || (PINA == 0x03)) state = Init;
+		else if (PINA == 0x02) state = Unlocked;
 		break;
 		
 		case Unlocked:
-		if (PINA & 0x80) state = Init;
+		if ((PINA & 0x80) || (PINA == 0x03)) state = Init;
 		break;
 		
-	}						
+	}
 	
 	switch(state){				//state actions
 		case Init:
@@ -52,12 +51,12 @@ void Tick(){
 		break;
 		
 		case Two:
-		PORTC = 4;
+		PORTC = 3;
 		break;
 		
 		case Unlocked:
 		PORTB = 1;
-		PORTC = 8;
+		PORTC = 4;
 		break;
 	}								//state actions
 }

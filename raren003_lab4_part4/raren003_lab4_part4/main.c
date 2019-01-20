@@ -26,17 +26,17 @@ void Tick(){
 		break;
 		
 		case One:
-		if ((PINA & 0x02) || (PINA & 0x80)) state = Init;
+		if ((PINA & 0x02) || (PINA & 0x80) || (PINA == 0x03)) state = Init;
 		else if ((PINA == 0x00)) state = Two;
 		break;
 		
 		case Two:
-		if ((PINA & 0x04) || (PINA & 0x80) || ((PINA & 0x02) && (PORTB == 1))) state = Init;
+		if ((PINA & 0x04) || (PINA & 0x80) || (PINA == 0x03) || ((PINA & 0x02) && (PORTB == 1))) state = Init;
 		else if ((PINA == 0x02) && (PORTB == 0)) state = Unlocked;
 		break;
 		
 		case Unlocked:
-		if (PINA & 0x80) state = Init;
+		if (PINA & 0x80 || (PINA == 0x03)) state = Init;
 		else if (PINA == 0x04) state = One;
 		break;
 		
@@ -53,12 +53,12 @@ void Tick(){
 		break;
 		
 		case Two:
-		PORTC = 4;
+		PORTC = 3;
 		break;
 		
 		case Unlocked:
 		PORTB = 1;
-		PORTC = 8;
+		PORTC = 4;
 		break;
 	}								//state actions
 }
@@ -75,4 +75,3 @@ int main(void)
 	
 	while(1) {Tick();}
 }
-
