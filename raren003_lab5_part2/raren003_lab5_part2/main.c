@@ -49,9 +49,10 @@ void Tick(){
 		state = WAIT;
 		if ((PINA & 0x01) && (PINA & 0x02)){ //A0 && A1
 			state = INIT;
-		}else if(!(PINA & 0x01) && (PINA & 0x02)) { //!A0 && A1
+		}else if(!(PINA & 0x01) && (PINA & 0x02)) { //!(A0 && A1)
 			state = WAIT;
 		}else if ((PINA & 0x01) || (PINA & 0x02)){ //A0 || A1
+			state = HOLD;
 		}
 		break;
 		
