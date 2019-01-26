@@ -26,13 +26,13 @@ void Tick(){
 		break;
 		
 		case WAIT:
-		if(!(PINA & 0x01) && !(PINA & 0x02)){ //!A0 && !A1
+		if(!(~PINA & 0x01) && !(~PINA & 0x02)){ //!A0 && !A1
 			state = WAIT;
-			}else if((PINA & 0x01) && (PINA & 0x02)){ //A0 && A1
+		}else if((~PINA & 0x01) && (~PINA & 0x02)){ //A0 && A1
 			state = INIT;
-			}else if((PINA & 0x01) && !(PINA & 0x02)){ //A0 && !A1
+		}else if((~PINA & 0x01) && !(~PINA & 0x02)){ //A0 && !A1
 			state = INCREMENT;
-			}else if(!(PINA & 0x01) && (PINA & 0x02)){ //!A0 && A1
+		}else if(!(~PINA & 0x01) && (~PINA & 0x02)){ //!A0 && A1
 			state = DECREMENT;
 		}
 		break;
@@ -47,11 +47,11 @@ void Tick(){
 		
 		case HOLD:
 		state = WAIT;
-		if ((PINA & 0x01) && (PINA & 0x02)){ //A0 && A1
+		if ((~PINA & 0x01) && (~PINA & 0x02)){ //A0 && A1
 			state = INIT;
-		}else if(!(PINA & 0x01) && (PINA & 0x02)) { //!(A0 && A1)
+		}else if(!(~PINA & 0x01) && !(~PINA & 0x02)) { //!(A0 && A1)
 			state = WAIT;
-		}else if ((PINA & 0x01) || (PINA & 0x02)){ //A0 || A1
+		}else if ((~PINA & 0x01) || (~PINA & 0x02)){ //A0 || A1
 			state = HOLD;
 		}
 		break;
@@ -80,7 +80,7 @@ void Tick(){
 		case DECREMENT:
 		if (tmpC > 0x00)
 		{
-			tmpC = tmpC -1;
+			tmpC = tmpC - 1;
 		}
 		PORTC = tmpC;
 		break;
@@ -96,7 +96,7 @@ void Tick(){
 int main(void)
 {
 	DDRA = 0x00; PORTA = 0xFF;	// Configure port A's 8 pins as inputs
-	DDRC = 0x00; PORTC = 0x00;	// Configure port B's 8 pins as outputs, Initialize 0’s
+	DDRC = 0xFF; PORTC = 0x00;	// Configure port B's 8 pins as outputs, Initialize 0’s
 	
 	state = Start;	//initial call
 	
