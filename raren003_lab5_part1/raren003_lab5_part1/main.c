@@ -23,7 +23,7 @@ int main(void)
 {
 	
 	DDRA = 0x00; PORTA = 0xFF;	// Configure port A's 8 pins as inputs
-	DDRC = 0xFF; PORTC = 0x00;	// Configure port C's 8 pins as inputs
+	DDRB = 0xFF; PORTB = 0x00;	// Configure port B's 8 pins as outputs
 	
 	unsigned char button = 0x00;
 	unsigned char led = 0x00;
@@ -42,6 +42,6 @@ int main(void)
 		if (button >= 10) led = SetBit(led, 1, 1);
 		if (button >= 13) led = SetBit(led, 0, 1);
 		if (button <= 4) led = SetBit(led, 6, 1);
-		PORTC = led;
+		PORTB = led;
 	}
 }
