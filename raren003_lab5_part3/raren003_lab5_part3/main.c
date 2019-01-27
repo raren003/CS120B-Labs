@@ -9,93 +9,95 @@
 
 #include <avr/io.h>
 
-enum States {Start, BEGIN_DISPLAY, CONFIG_ONE, CONFIG_TWO, CONFIG_THREE} state;
-	
+enum States {Start, Init, Wait, One, Two, Three, Four} state;
+
+unsigned int check = 0x00;
 void Tick(){
 	
 	
 	switch(state) {				//transitions
 		case Start:
-		state = BEGIN_DISPLAY;
+		state = Init;
 		break;
 		
-		case BEGIN_DISPLAY:
-		if (!(~PINA & 0x01)){	//!A0
-			state = BEGIN_DISPLAY;
-		}
-		else if ((~PINA & 0x01)){	//A00
-			state = CONFIG_ONE;
-		}
+		case Init:
+		state = Wait;
 		break;
 		
-		case CONFIG_ONE:
-		if (!(~PINA & 0x01)){	//!A0
-			state = CONFIG_ONE;
-		} 
-		else if ((~PINA & 0x01)){	//A00
-			state = CONFIG_TWO;
-		}
+		case Wait:
+		if ((~PINA & 0x01) && PORTB == 0x00) state = One;
+		else if ((~PINA & 0x01) && PORTB == 0x21) state = Two;
+		else if ((~PINA & 0x01) && (PORTB == 0x12) && (check == 0x00)) state = Three;
+		else if ((~PINA & 0x01) && PORTB == 0x0C) state = Four;
+		else if ((~PINA & 0x01) && (PORTB == 0x12) && (check == 0x01)) state = One;
 		break;
 		
-		case CONFIG_TWO:
-		if (!(~PINA & 0x01)){	//!A0
-			state = CONFIG_TWO;
-		}
-		else if ((~PINA & 0x01)){	//A00
-			state = CONFIG_THREE;
-		}
+		case One:
+		if (!(~PINA & 0x01)) state = Wait;
 		break;
 		
-		case CONFIG_THREE:
-		if (!(~PINA & 0x01)){	//!A0
-			state = CONFIG_THREE;
-		}
-		else if ((~PINA & 0x01)){	//A00
-			state = BEGIN_DISPLAY;
-		}
+		case Two:
+		if (!(~PINA & 0x01)) state = Wait;
 		break;
 		
-		default:
+		case Three:
+		if (!(~PINA & 0x01)) state = Wait;
 		break;
-	}							//transitions
+		
+		case Four:
+		if (!(~PINA & 0x01)) state = Wait;
+		break;
+		
+		
+	}
 	
 	switch(state){				//state actions
 		
 		case Start:
+		PORTB = 0;
+		//PORTC = PORTB;
 		break;
 		
-		case BEGIN_DISPLAY:
-		PORTC = 0x00;
+		case Init:
+		PORTB = 0;
+		//PORTC = PORTB;
 		break;
 		
-		case CONFIG_ONE:
-		PORTC = 0x21;
+		case Wait:
 		break;
 		
-		case CONFIG_TWO:
-		PORTC = 0x12;
+		case One:
+		PORTB = 0x21;
+		//PORTC = PORTB;
 		break;
 		
-		case CONFIG_THREE:
-		PORTC = 0x0C;
+		case Two:
+		PORTB = 0x12;
+		//PORTC = PORTB;
+		check = 0x00;
 		break;
 		
+		case Three:
+		PORTB = 0x0C;
+		//PORTC = PORTB;
+		break;
 		
-		default:
+		case Four:
+		PORTB = 0x12;
+		//PORTC = PORTB;
+		check = 0x01;
 		break;
 	}								//state actions
 }
 
 int main(void)
 {
-    DDRA = 0x00; PORTA = 0xFF;	// Configure port A's 8 pins as inputs
-    DDRC = 0xFF; PORTC = 0x00;	// Configure port B's 8 pins as outputs, Initialize 0’s
+	DDRA = 0x00; PORTA = 0xFF;	// Configure port A's 8 pins as inputs
+	DDRB = 0xFF; PORTB = 0x00;	// Configure port B's 8 pins as outputs, Initialize 0’s
+	DDRC = 0xFF; PORTC = 0x00;
 	
+	PORTB = 0;
 	state = Start;	//initial call
 	
-    while (1) 
-    {
-		Tick();
-    }
+	while(1) {Tick();}
 }
-
