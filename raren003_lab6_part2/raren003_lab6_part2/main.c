@@ -1,6 +1,6 @@
 /* Partner(s) Name & E-mail: Robert Arenas, raren003@ucr.edu, Noah Marestaing, nmare001@ucr.edu
 * Lab Section: 022
-* Assignment: Lab #6 Exercise #1
+* Assignment: Lab #6 Exercise #2
 * Exercise Description: [optional - include for your own benefit]
 *
 * I acknowledge all content contained herein, excluding template or example
@@ -10,8 +10,8 @@
 #include <avr/io.h>
 #include "timer.h"
 
-enum States {START, INIT, NEXTLED} state;
-	
+enum States {START, INIT, NEXTLED, LIT,	WAIT} state;
+
 unsigned char tmpB = 0x00; //variable for setting portB
 
 void Tick(){
@@ -21,12 +21,42 @@ void Tick(){
 		break;
 		
 		case INIT:
-		state = NEXTLED;
+		if(~PINA & 0x01){
+			state = INIT;
+		}else if (!(~PINA & 0x01))
+		{
+			state = NEXTLED;
+		}
 		break;
 		
 		case NEXTLED:
-		state = NEXTLED;
+		if (!(~PINA & 0x01))
+		{
+			state = NEXTLED;
+		}else if (~PINA & 0x01)
+		{
+			state = LIT;
+		}
 		break;
+		
+		case LIT:
+		if (~PINA & 0x01)
+		{
+			state = LIT;
+		} 
+		else if(!(~PINA & 0x01))
+		{
+			state = WAIT;
+		}
+		break;
+		
+		case WAIT:
+		if(!(~PINA & 0x01)){
+			state = WAIT;
+		}else if (~PINA & 0x01)
+		{
+			state = INIT;
+		}
 		
 		default:
 		break;
@@ -45,11 +75,19 @@ void Tick(){
 		if (tmpB == 0x04) //go back to led 1 after 3 is lit
 		{
 			tmpB = 0x01;
-		} 
+		}
 		else //shift to move to next led
 		{
 			tmpB = tmpB << 1;
 		}
+		PORTB = tmpB;
+		break;
+		
+		case LIT:
+		PORTB = tmpB;
+		break;
+		
+		case WAIT:
 		PORTB = tmpB;
 		break;
 		
@@ -61,18 +99,18 @@ void Tick(){
 
 int main(void)
 {
-    DDRB = 0xFF; PORTB = 0x00; //set PORTB as output initialize to 0
+	DDRA = 0x00; PORTA = 0xFF;	// Configure port A's 8 pins as inputs
+	DDRB = 0xFF; PORTB = 0x00; //set PORTB as output initialize to 0
 	
-	TimerSet(1000); 
+	TimerSet(300);
 	TimerOn();
 	
 	state = START;
 	
-    while (1) 
-    {
+	while (1)
+	{
 		Tick();
 		while (!TimerFlag){} //wait 1 sec
 		TimerFlag = 0;
-    }
+	}
 }
-
