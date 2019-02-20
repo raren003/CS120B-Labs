@@ -10,24 +10,22 @@
 #include <avr/io.h>
 #include <avr/common.h>
 #include <avr/interrupt.h>
-#include "scheduler.h"
 #include "keypad.h"
 #include "io.c"
 
-/*
+
 typedef struct task {
 	int state;
 	unsigned long period;
 	unsigned long elapsedTime;
 	int (*TickFct)(int);
-} task; */
+} task; 
 
 task tasks[2];
 const unsigned short tasksNum = 2;
 const unsigned long taskPeriodGCD = 2;
 const unsigned long periodKeypad = 2;
 const unsigned long periodLCD = 500;
-
 
 
 static unsigned char x; // used to get input from keypad
@@ -56,28 +54,28 @@ int TickFct_Keypad(int state){
 		case KEY_Input:
 			x = GetKeypadKey();
 			switch(x) {
-				case '\0': PORTB = 0x1F; break;		//All 5 LEDs on
-				case '1': PORTB = 0x01; lcdOutput = "1"; break;		//hex equivalent
-				case '2': PORTB = 0x02; lcdOutput = "2"; break;
+				case '\0': break;		//All 5 LEDs on
+				case '1': lcdOutput = "1"; break;		//hex equivalent
+				case '2': lcdOutput = "2"; break;
 				
 				
 				//  . . . ?***** FINISH *****
-				case '3': PORTB = 0x03; lcdOutput = "3"; break;
-				case '4': PORTB = 0x04; lcdOutput = "4"; break;
-				case '5': PORTB = 0x05; lcdOutput = "5"; break;
-				case '6': PORTB = 0x06; lcdOutput = "6"; break;
-				case '7': PORTB = 0x07; lcdOutput = "7"; break;
-				case '8': PORTB = 0x08; lcdOutput = "8"; break;
-				case '9': PORTB = 0x09; lcdOutput = "9"; break;
-				case 'A': PORTB = 0x0A; lcdOutput = "A"; break;
-				case 'B': PORTB = 0x0B; lcdOutput = "B"; break;
-				case 'C': PORTB = 0x0C; lcdOutput = "C"; break;
+				case '3': lcdOutput = "3"; break;
+				case '4': lcdOutput = "4"; break;
+				case '5': lcdOutput = "5"; break;
+				case '6': lcdOutput = "6"; break;
+				case '7': lcdOutput = "7"; break;
+				case '8': lcdOutput = "8"; break;
+				case '9': lcdOutput = "9"; break;
+				case 'A': lcdOutput = "A"; break;
+				case 'B': lcdOutput = "B"; break;
+				case 'C': lcdOutput = "C"; break;
 				
-				case 'D': PORTB = 0x0D; lcdOutput = "D"; break;
-				case '*': PORTB = 0x0E; lcdOutput = "*"; break;
-				case '0': PORTB = 0x00; lcdOutput = "0"; break;
-				case '#': PORTB = 0x0F; lcdOutput = "#"; break;
-				default: PORTB = 0x1B;  lcdOutput = "R"; break;	// Should never occur. Middle LED OFF
+				case 'D': lcdOutput = "D"; break;
+				case '*': lcdOutput = "*"; break;
+				case '0': lcdOutput = "0"; break;
+				case '#': lcdOutput = "#"; break;
+				default: lcdOutput = "R"; break;	// Should never occur.
 			}
 		break;
 		
@@ -199,7 +197,6 @@ ISR(TIMER1_COMPA_vect)
 
 int main(void)
 {
-    DDRB = 0xFF; PORTB = 0x00; // PORTB set to output, outputs init 0s
     DDRA = 0xF0; PORTA = 0x0F; // PC7..4 outputs init 0s, PC3..0 inputs init 1s
 	
 	DDRC = 0xFF; PORTC = 0x00;	//LCD data lines
