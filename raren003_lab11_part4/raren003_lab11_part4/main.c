@@ -1,6 +1,6 @@
 /* Partner(s) Name & E-mail: Robert Arenas, raren003@ucr.edu, Noah Marestaing, nmare001@ucr.edu
 * Lab Section: 022
-* Assignment: Lab #11 Exercise #3
+* Assignment: Lab #11 Exercise #4
 * Exercise Description: [optional - include for your own benefit]
 *
 * I acknowledge all content contained herein, excluding template or example
@@ -21,15 +21,18 @@ typedef struct task {
 	int (*TickFct)(int);
 } task; 
 
-task tasks[2];
-const unsigned short tasksNum = 2;
-const unsigned long taskPeriodGCD = 2;
-const unsigned long periodKeypad = 2;
+task tasks[3];
+const unsigned short tasksNum = 3;
+const unsigned long taskPeriodGCD = 100;
+const unsigned long periodKeypad = 200;
+const unsigned long periodLCDString = 500;
 const unsigned long periodLCD = 500;
 
 
 static unsigned char x; // used to get input from keypad
 static unsigned char lcdOutput = ' '; // used to display output on LCD
+static unsigned char lcdCursor = 0; // track location which is being written to on lcd
+const unsigned char* lcdString = "Congratulations!";
 
 enum KEYPAD_STATES {KEY_start,  KEY_Input};
 int TickFct_Keypad(int state){
@@ -53,28 +56,31 @@ int TickFct_Keypad(int state){
 		
 		case KEY_Input:
 			x = GetKeypadKey();
+			
+			//if (lcdCursor > 16){ lcdCursor = 1; } // reset cursor if end of lcdString has been reached
+			
 			switch(x) {
 				case '\0': break;		//All 5 LEDs on
-				case '1': lcdOutput = '1'; break;		//hex equivalent
-				case '2': lcdOutput = '2'; break;
+				case '1': lcdOutput = '1'; lcdCursor++; break;		//hex equivalent
+				case '2': lcdOutput = '2'; lcdCursor++; break;
 				
 				
 				//  . . . ?***** FINISH *****
-				case '3': lcdOutput = '3'; break;
-				case '4': lcdOutput = '4'; break;
-				case '5': lcdOutput = '5'; break;
-				case '6': lcdOutput = '6'; break;
-				case '7': lcdOutput = '7'; break;
-				case '8': lcdOutput = '8'; break;
-				case '9': lcdOutput = '9'; break;
-				case 'A': lcdOutput = 'A'; break;
-				case 'B': lcdOutput = 'B'; break;
-				case 'C': lcdOutput = 'C'; break;
+				case '3': lcdOutput = '3'; lcdCursor++; break;
+				case '4': lcdOutput = '4'; lcdCursor++; break;
+				case '5': lcdOutput = '5'; lcdCursor++; break;
+				case '6': lcdOutput = '6'; lcdCursor++; break;
+				case '7': lcdOutput = '7'; lcdCursor++; break;
+				case '8': lcdOutput = '8'; lcdCursor++; break;
+				case '9': lcdOutput = '9'; lcdCursor++; break;
+				case 'A': lcdOutput = 'A'; lcdCursor++; break;
+				case 'B': lcdOutput = 'B'; lcdCursor++; break;
+				case 'C': lcdOutput = 'C'; lcdCursor++; break;
 				
-				case 'D': lcdOutput = 'D';; break;
-				case '*': lcdOutput = '*'; break;
-				case '0': lcdOutput = '0'; break;
-				case '#': lcdOutput = '#'; break;
+				case 'D': lcdOutput = 'D'; lcdCursor++; break;
+				case '*': lcdOutput = '*'; lcdCursor++; break;
+				case '0': lcdOutput = '0'; lcdCursor++; break;
+				case '#': lcdOutput = '#'; lcdCursor++; break;
 				default: lcdOutput = 'R'; break;	// Should never occur.
 			}
 		break;
@@ -86,6 +92,43 @@ int TickFct_Keypad(int state){
 	return state;
 }
 
+enum LCDSTRING_STATES {LCDSTRING_start,  LCDSTRING_Display, LCDSTRING_WAIT};
+int TickFct_LCDSTRING(int state){
+	
+	switch(state){		//transitions
+		case LCDSTRING_start:
+		state = LCDSTRING_Display;
+		break;
+		
+		case LCDSTRING_Display:
+		state = LCDSTRING_WAIT;
+		break;
+		
+		case LCDSTRING_WAIT:
+		state = LCDSTRING_WAIT;
+		break;
+		
+		default:
+		break;
+	}					//transitions
+	
+	
+	switch(state){		//state actions
+		case LCDSTRING_start:
+		break;
+		
+		case LCDSTRING_Display:
+	    LCD_DisplayString(1, lcdString);
+		break;
+		
+		case LCDSTRING_WAIT:
+		break;
+		
+		default:
+		break;
+	}					//state actions
+	return state;
+}
 
 enum LCD_STATES {LCD_start,  LCD_Display};
 int TickFct_LCD(int state){
@@ -109,8 +152,13 @@ int TickFct_LCD(int state){
 		break;
 		
 		case LCD_Display:
-			LCD_Cursor(1);
+		if (lcdCursor > 0)
+		{
+			LCD_Cursor(lcdCursor);
 			LCD_WriteData(lcdOutput);
+			
+			if (lcdCursor > 15){ lcdCursor = 0; } // reset cursor if end of lcdString has been reached
+		}	
 		break;
 		
 		default:
@@ -210,6 +258,11 @@ int main(void)
 	tasks[i].period = periodKeypad;
 	tasks[i].elapsedTime = 0;
 	tasks[i].TickFct = &TickFct_Keypad;
+	i++;
+	tasks[i].state = LCDSTRING_start;
+	tasks[i].period = periodLCDString;
+	tasks[i].elapsedTime = 0;
+	tasks[i].TickFct = &TickFct_LCDSTRING;
 	i++;
 	tasks[i].state = LCD_start;
 	tasks[i].period = periodLCD;
