@@ -1,6 +1,6 @@
 /* Partner(s) Name & E-mail: Robert Arenas, raren003@ucr.edu, Noah Marestaing, nmare001@ucr.edu
 * Lab Section: 022
-* Assignment: Lab #11 Exercise #4
+* Assignment: Lab #11 Exercise #5
 * Exercise Description: [optional - include for your own benefit]
 *
 * I acknowledge all content contained herein, excluding template or example
@@ -10,162 +10,156 @@
 #include <avr/io.h>
 #include <avr/common.h>
 #include <avr/interrupt.h>
-#include "keypad.h"
 #include "io.c"
-
 
 typedef struct task {
 	int state;
 	unsigned long period;
 	unsigned long elapsedTime;
 	int (*TickFct)(int);
-} task; 
+} task;
 
 task tasks[3];
 const unsigned short tasksNum = 3;
-const unsigned long taskPeriodGCD = 100;
-const unsigned long periodKeypad = 200;
-const unsigned long periodLCDString = 500;
-const unsigned long periodLCD = 200;
+const unsigned long taskPeriodGCD = 50;
+const unsigned long periodObstacle = 350;
+const unsigned long periodObstacle2 = 350;
+const unsigned long periodObstacleRemove = 450;
 
+static unsigned char obstaclePosition = 8;
+static unsigned char obstaclePosition2 = 32;
+unsigned char playerPosition = 0;
+unsigned char button = 0x00; //used to check which button is being pressed based on the value of
 
-static unsigned char x; // used to get input from keypad
-static unsigned char lcdOutput = ' '; // used to display output on LCD
-static unsigned char lcdCursor = 0; // track location which is being written to on lcd
-const unsigned char* lcdString = "Congratulations!";
-
-enum KEYPAD_STATES {KEY_start,  KEY_Input};
-int TickFct_Keypad(int state){
+enum OBSTACLE_STATES {Obst_start, Obst_main};
+int TickFct_Obstacle(int state){
 	
-	switch(state){
-		case KEY_start:
-		state = KEY_Input;
-		break;
-		
-		case KEY_Input:
-		state = KEY_Input;
-		break;
-		
-		default:
-		break;
-	}
+	switch (state){			//transitions
+		case Obst_start:
+			state = Obst_main;
+			break;
+			
+		case  Obst_main:
+			state = Obst_main;
+			break;
+	}						//transitions
 	
-	switch(state){
-		case KEY_start:
+	switch (state){			//state actions
+		case Obst_start:
 		break;
 		
-		case KEY_Input:
-			x = GetKeypadKey();
+		case  Obst_main:
+			LCD_Cursor(obstaclePosition);
+			LCD_WriteData('#');
 			
-			//if (lcdCursor > 16){ lcdCursor = 1; } // reset cursor if end of lcdString has been reached
-			
-			switch(x) {
-				case '\0': break;		//All 5 LEDs on
-				case '1': lcdOutput = '1'; lcdCursor++; break;		//hex equivalent
-				case '2': lcdOutput = '2'; lcdCursor++; break;
-				
-				
-				//  . . . ?***** FINISH *****
-				case '3': lcdOutput = '3'; lcdCursor++; break;
-				case '4': lcdOutput = '4'; lcdCursor++; break;
-				case '5': lcdOutput = '5'; lcdCursor++; break;
-				case '6': lcdOutput = '6'; lcdCursor++; break;
-				case '7': lcdOutput = '7'; lcdCursor++; break;
-				case '8': lcdOutput = '8'; lcdCursor++; break;
-				case '9': lcdOutput = '9'; lcdCursor++; break;
-				case 'A': lcdOutput = 'A'; lcdCursor++; break;
-				case 'B': lcdOutput = 'B'; lcdCursor++; break;
-				case 'C': lcdOutput = 'C'; lcdCursor++; break;
-				
-				case 'D': lcdOutput = 'D'; lcdCursor++; break;
-				case '*': lcdOutput = '*'; lcdCursor++; break;
-				case '0': lcdOutput = '0'; lcdCursor++; break;
-				case '#': lcdOutput = '#'; lcdCursor++; break;
-				default: lcdOutput = 'R'; break;	// Should never occur.
+			if (obstaclePosition > 1)
+			{
+				obstaclePosition = obstaclePosition - 1;
+			}else {
+				obstaclePosition = 16;
 			}
 		break;
+	}						//state actions
+	
+	return state;
+}
+
+enum OBSTACLE2_STATES {Obst2_start, Obst2_main};
+int TickFct_Obstacle2(int state){
+	
+	switch (state){			//transitions
+		case Obst2_start:
+		state = Obst2_main;
+		break;
 		
-		default:
+		case  Obst2_main:
+		state = Obst2_main;
+		break;
+	}						//transitions
+	
+	switch (state){			//state actions
+		case Obst2_start:
+		break;
+		
+		case  Obst2_main:
+		LCD_Cursor(obstaclePosition2);
+		LCD_WriteData('#');
+		
+		if (obstaclePosition2 > 17)
+		{
+			obstaclePosition2 = obstaclePosition2 - 1;
+		}else {
+			obstaclePosition2 = 32;
+		}
+		break;
+	}						//state actions
+	
+	return state;
+}
+
+enum OBSTACLEREMOVE_STATES {ObstRemove_start, ObstRemove_main};
+int TickFct_ObstacleRemove(int state){
+	
+	switch (state){			//transitions
+		case ObstRemove_start:
+		state = ObstRemove_main;
+		break;
+		
+		case  ObstRemove_main:
+		state = ObstRemove_main;
+		break;
+	}						//transitions
+	
+	switch (state){			//state actions
+		case ObstRemove_start:
+		break;
+		
+		case  ObstRemove_main:
+		LCD_ClearScreen();
+		break;
+	}						//state actions
+	
+	return state;
+}
+
+enum Player_Move {PM_Start, PM_Wait, PM_Up, PM_Down};
+int TickFct_KeyPad_Run(int state){
+	switch (state) {
+		case PM_Start:
+		state = PM_Wait;
+		break;
+		
+		case PM_Wait:
+		if (button == 0x01) state = PM_Up;
+		else if (button == 0x02) state = PM_Down;
+		break;
+		
+		case PM_Up:
+		state = PM_Wait;
+		break;
+		
+		case PM_Down:
+		state = PM_Wait;
 		break;
 	}
-	
+	switch (state) {
+		case PM_Start:
+		playerPosition = 0;
+		break;
+		
+		case PM_Up:
+		LCD_Cursor(1);
+		playerPosition = 0;
+		break;
+		
+		case PM_Down:
+		LCD_Cursor(18);
+		playerPosition = 1;
+		break;
+	}
 	return state;
 }
 
-enum LCDSTRING_STATES {LCDSTRING_start,  LCDSTRING_Display, LCDSTRING_WAIT};
-int TickFct_LCDSTRING(int state){
-	
-	switch(state){		//transitions
-		case LCDSTRING_start:
-		state = LCDSTRING_Display;
-		break;
-		
-		case LCDSTRING_Display:
-		state = LCDSTRING_WAIT;
-		break;
-		
-		case LCDSTRING_WAIT:
-		state = LCDSTRING_WAIT;
-		break;
-		
-		default:
-		break;
-	}					//transitions
-	
-	
-	switch(state){		//state actions
-		case LCDSTRING_start:
-		break;
-		
-		case LCDSTRING_Display:
-	    LCD_DisplayString(1, lcdString);
-		break;
-		
-		case LCDSTRING_WAIT:
-		break;
-		
-		default:
-		break;
-	}					//state actions
-	return state;
-}
-
-enum LCD_STATES {LCD_start,  LCD_Display};
-int TickFct_LCD(int state){
-	
-	switch(state){		//transitions
-		case LCD_start:
-			state = LCD_Display;
-		break;
-		
-		case LCD_Display:
-			state = LCD_Display;
-		break;
-		
-		default:
-		break;
-	}					//transitions
-	
-	
-	switch(state){		//state actions
-		case LCD_start:
-		break;
-		
-		case LCD_Display:
-		if (lcdCursor > 0)
-		{
-			LCD_Cursor(lcdCursor);
-			LCD_WriteData(lcdOutput);
-			
-			if (lcdCursor > 15){ lcdCursor = 0; } // reset cursor if end of lcdString has been reached
-		}	
-		break;
-		
-		default:
-		break;
-	}					//state actions
-	return state;
-}
 
 
 
@@ -243,36 +237,37 @@ ISR(TIMER1_COMPA_vect)
 	}
 }
 
-
 int main(void)
 {
     DDRA = 0xF0; PORTA = 0x0F; // PC7..4 outputs init 0s, PC3..0 inputs init 1s
-	
-	DDRC = 0xFF; PORTC = 0x00;	//LCD data lines
-	DDRD = 0xFF; PORTD = 0x00;	//LCD control lines
+    
+    DDRC = 0xFF; PORTC = 0x00;	//LCD data lines
+    DDRD = 0xFF; PORTD = 0x00;	//LCD control lines
 	
 	LCD_init();
 	
 	unsigned char i = 0;
-	tasks[i].state = KEY_start;
-	tasks[i].period = periodKeypad;
+	tasks[i].state = Obst_start;
+	tasks[i].period = periodObstacle;
 	tasks[i].elapsedTime = 0;
-	tasks[i].TickFct = &TickFct_Keypad;
+	tasks[i].TickFct = &TickFct_Obstacle;
 	i++;
-	tasks[i].state = LCDSTRING_start;
-	tasks[i].period = periodLCDString;
+	tasks[i].state = Obst2_start;
+	tasks[i].period = periodObstacle2;
 	tasks[i].elapsedTime = 0;
-	tasks[i].TickFct = &TickFct_LCDSTRING;
+	tasks[i].TickFct = &TickFct_Obstacle2;
 	i++;
-	tasks[i].state = LCD_start;
-	tasks[i].period = periodLCD;
+	tasks[i].state = ObstRemove_start;
+	tasks[i].period = periodObstacleRemove;
 	tasks[i].elapsedTime = 0;
-	tasks[i].TickFct = &TickFct_LCD;
+	tasks[i].TickFct = &TickFct_ObstacleRemove;
 	
 	TimerSet(taskPeriodGCD);
 	TimerOn();
 	
     while (1) 
     {
+		button = ~PINA;
     }
 }
+
