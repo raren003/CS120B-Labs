@@ -19,18 +19,23 @@ typedef struct task {
 	int (*TickFct)(int);
 } task;
 
-task tasks[4];
-const unsigned short tasksNum = 4;
+task tasks[6];
+const unsigned short tasksNum = 6;
 const unsigned long taskPeriodGCD = 50;
 const unsigned long periodObstacle = 350;
 const unsigned long periodObstacle2 = 350;
-const unsigned long periodObstacleRemove = 450;
+const unsigned long periodObstacleRemove = 750;
 const unsigned long periodPlayerMove = 350;
+const unsigned long periodCollider = 350;
+const unsigned long periodGameOver = 350;
+const unsigned long periodPause = 350;
 
 static unsigned char obstaclePosition = 8;
 static unsigned char obstaclePosition2 = 32;
 unsigned char playerPosition = 5;
 unsigned char button = 0x00; //used to check which button is being pressed based on the value of
+unsigned char collided = 0x00;
+unsigned char* LCD_Output = "GAME OVER";
 
 enum OBSTACLE_STATES {Obst_start, Obst_main};
 int TickFct_Obstacle(int state){
@@ -168,7 +173,61 @@ int TickFct_KeyPad_Run(int state){
 	return state;
 }
 
+enum Collider {CO_start, CO_wait};
+int TickFct_Collider(int state){
+	
+	switch (state){			//transitions
+		case CO_start:
+		state = CO_wait;
+		break;
+	}						//transitions
+	
+	switch (state) {
+		case CO_wait:
+		if (playerPosition == obstaclePosition) { collided = 1; }
+		else if (playerPosition == obstaclePosition2){ collided = 1; }
+		break;
+	}
+	
+	return state;
+}						
 
+enum Pause {P_Start, P_Wait, P_GameOver, P_GameReset};
+int TickFct_Pause(int state) {
+	switch(state) {
+		case P_Start:
+		state = P_Wait;
+		break;
+		
+		case P_Wait:
+		if (collided == 1) state = P_GameOver;
+		break;
+		
+		case P_GameOver:
+		if (button == 8) state = P_GameReset;
+		break;
+		
+		case P_GameReset:
+		state = P_Wait;
+		break;
+	}
+	
+	switch(state) {
+		case P_GameOver:
+		LCD_DisplayString(1, LCD_Output);
+		break;
+		
+		case P_GameReset:
+		collided = 0;
+		obstaclePosition = 8;
+		obstaclePosition2 = 32;
+		playerPosition = 5;
+		break;
+		
+	}
+	
+	return state;
+}
 
 
 ///////////////////////////////////////////////////////////////
@@ -274,6 +333,16 @@ int main(void)
 	tasks[i].period = periodPlayerMove;
 	tasks[i].elapsedTime = 0;
 	tasks[i].TickFct = &TickFct_KeyPad_Run;
+	i++;
+	tasks[i].state = CO_start;
+	tasks[i].period = periodCollider;
+	tasks[i].elapsedTime = 0;
+	tasks[i].TickFct = &TickFct_Collider;
+	i++;
+	tasks[i].state = P_Start;
+	tasks[i].period = periodGameOver;
+	tasks[i].elapsedTime = 0;
+	tasks[i].TickFct = &TickFct_Pause;
 	
 	TimerSet(taskPeriodGCD);
 	TimerOn();
