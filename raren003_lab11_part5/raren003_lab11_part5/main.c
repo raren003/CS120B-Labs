@@ -19,16 +19,17 @@ typedef struct task {
 	int (*TickFct)(int);
 } task;
 
-task tasks[3];
-const unsigned short tasksNum = 3;
+task tasks[4];
+const unsigned short tasksNum = 4;
 const unsigned long taskPeriodGCD = 50;
 const unsigned long periodObstacle = 350;
 const unsigned long periodObstacle2 = 350;
 const unsigned long periodObstacleRemove = 450;
+const unsigned long periodPlayerMove = 350;
 
 static unsigned char obstaclePosition = 8;
 static unsigned char obstaclePosition2 = 32;
-unsigned char playerPosition = 0;
+unsigned char playerPosition = 5;
 unsigned char button = 0x00; //used to check which button is being pressed based on the value of
 
 enum OBSTACLE_STATES {Obst_start, Obst_main};
@@ -144,17 +145,24 @@ int TickFct_KeyPad_Run(int state){
 	}
 	switch (state) {
 		case PM_Start:
-		playerPosition = 0;
+		playerPosition = 5;
+		LCD_Cursor(playerPosition);
+		break;
+		
+		case PM_Wait:
+		LCD_Cursor(playerPosition);
 		break;
 		
 		case PM_Up:
-		LCD_Cursor(1);
-		playerPosition = 0;
+		playerPosition = 5;
+		LCD_Cursor(playerPosition);
+		
 		break;
 		
 		case PM_Down:
-		LCD_Cursor(18);
-		playerPosition = 1;
+		playerPosition = 21;
+		LCD_Cursor(playerPosition);
+		
 		break;
 	}
 	return state;
@@ -239,7 +247,7 @@ ISR(TIMER1_COMPA_vect)
 
 int main(void)
 {
-    DDRA = 0xF0; PORTA = 0x0F; // PC7..4 outputs init 0s, PC3..0 inputs init 1s
+    DDRA = 0x00; PORTA = 0xFF; //set PORTA as input
     
     DDRC = 0xFF; PORTC = 0x00;	//LCD data lines
     DDRD = 0xFF; PORTD = 0x00;	//LCD control lines
@@ -261,6 +269,11 @@ int main(void)
 	tasks[i].period = periodObstacleRemove;
 	tasks[i].elapsedTime = 0;
 	tasks[i].TickFct = &TickFct_ObstacleRemove;
+	i++;
+	tasks[i].state = PM_Start;
+	tasks[i].period = periodPlayerMove;
+	tasks[i].elapsedTime = 0;
+	tasks[i].TickFct = &TickFct_KeyPad_Run;
 	
 	TimerSet(taskPeriodGCD);
 	TimerOn();
