@@ -19,22 +19,23 @@ typedef struct task {
 	int (*TickFct)(int);
 } task;
 
-task tasks[6];
-const unsigned short tasksNum = 6;
+task tasks[7];
+const unsigned short tasksNum = 7;
 const unsigned long taskPeriodGCD = 50;
 const unsigned long periodObstacle = 350;
 const unsigned long periodObstacle2 = 350;
-const unsigned long periodObstacleRemove = 750;
+const unsigned long periodObstacleRemove = 400;
 const unsigned long periodPlayerMove = 350;
 const unsigned long periodCollider = 350;
 const unsigned long periodGameOver = 350;
-const unsigned long periodPause = 350;
+const unsigned long periodPause = 150;
 
 static unsigned char obstaclePosition = 8;
 static unsigned char obstaclePosition2 = 32;
 unsigned char playerPosition = 5;
 unsigned char button = 0x00; //used to check which button is being pressed based on the value of
 unsigned char collided = 0x00;
+unsigned char gameplayPaused = 0x00;
 unsigned char* LCD_Output = "GAME OVER";
 
 enum OBSTACLE_STATES {Obst_start, Obst_main};
@@ -57,13 +58,17 @@ int TickFct_Obstacle(int state){
 		case  Obst_main:
 			LCD_Cursor(obstaclePosition);
 			LCD_WriteData('#');
-			
-			if (obstaclePosition > 1)
+			if (!gameplayPaused)
 			{
-				obstaclePosition = obstaclePosition - 1;
-			}else {
-				obstaclePosition = 16;
+				
+				if (obstaclePosition > 1)
+				{
+					obstaclePosition = obstaclePosition - 1;
+					}else {
+					obstaclePosition = 16;
+				}
 			}
+			
 		break;
 	}						//state actions
 	
@@ -91,11 +96,14 @@ int TickFct_Obstacle2(int state){
 		LCD_Cursor(obstaclePosition2);
 		LCD_WriteData('#');
 		
-		if (obstaclePosition2 > 17)
+		if (!gameplayPaused)
 		{
-			obstaclePosition2 = obstaclePosition2 - 1;
-		}else {
-			obstaclePosition2 = 32;
+			if (obstaclePosition2 > 17)
+			{
+				obstaclePosition2 = obstaclePosition2 - 1;
+			}else {
+				obstaclePosition2 = 32;
+			}
 		}
 		break;
 	}						//state actions
@@ -121,8 +129,12 @@ int TickFct_ObstacleRemove(int state){
 		break;
 		
 		case  ObstRemove_main:
-		LCD_ClearScreen();
-		break;
+		if (!collided)
+		{
+			LCD_ClearScreen();
+			break;
+		}
+		
 	}						//state actions
 	
 	return state;
@@ -222,12 +234,63 @@ int TickFct_Pause(int state) {
 		obstaclePosition = 8;
 		obstaclePosition2 = 32;
 		playerPosition = 5;
+		LCD_ClearScreen();
 		break;
 		
 	}
 	
 	return state;
 }
+
+
+enum Pause2 {P2_Start, P2_Wait, P2_PausePress, P2_PauseRelease, P2_RestartPress};
+int TickFct_Pause2(int state) {
+	
+	switch(state){
+	case P2_Start:
+	state = P_Wait;
+	break;
+	
+	case P2_Wait:
+	if (!(button == 8)){
+		state = P2_Wait;
+	}else if(button == 8){
+		state = P2_PausePress;
+		gameplayPaused = 1;
+	}
+	break;
+	
+	case P2_PausePress:
+	if (!(button == 8)){
+		state = P2_PauseRelease;
+	}else if(button == 8){
+		state = P2_PausePress;
+	}
+	break;
+	
+	case  P2_PauseRelease:
+	if (!(button == 8)){
+		state = P2_PauseRelease;
+	}else if(button == 8){
+		state = P2_RestartPress;
+	}
+	break;
+	
+	case P2_RestartPress:
+	if (!(button == 8)){
+		state = P2_Wait;
+		gameplayPaused = 0;
+	}else if(button == 8){
+		state = P2_RestartPress;
+	}
+	break;
+	
+	
+	}
+	
+	return state;
+}
+	
 
 
 ///////////////////////////////////////////////////////////////
@@ -343,6 +406,11 @@ int main(void)
 	tasks[i].period = periodGameOver;
 	tasks[i].elapsedTime = 0;
 	tasks[i].TickFct = &TickFct_Pause;
+	i++;
+	tasks[i].state = P2_Start;
+	tasks[i].period = periodPause;
+	tasks[i].elapsedTime = 0;
+	tasks[i].TickFct = &TickFct_Pause2;
 	
 	TimerSet(taskPeriodGCD);
 	TimerOn();
