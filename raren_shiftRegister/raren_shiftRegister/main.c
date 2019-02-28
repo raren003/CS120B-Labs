@@ -8,6 +8,10 @@
 */
 
 #include <avr/io.h>
+#include <stdlib.h>
+#include "timer.h"
+#include "io.c"
+
 
 void transmit_data(unsigned char data){
 	
@@ -38,12 +42,28 @@ int main(void)
 {
     DDRB = 0xFF; PORTB = 0x00; // PORTB set to output, outputs init 0s
 	
-	unsigned char x = 12;
+	DDRC = 0xFF; PORTC = 0x00;	//LCD data lines
+	DDRD = 0xFF; PORTD = 0x00;	//LCD control lines
 	
-	transmit_data(x);
+	unsigned char i = 0;
+	char buffer[20];
+	
+	LCD_init();
+	TimerSet(300);
+	TimerOn();
+	
 	
     while (1) 
     {
+		for (i = 0; i < 256; i++)
+		{
+			transmit_data(i);
+			itoa (i,buffer,10);
+			LCD_DisplayString(1, buffer);
+			while(!TimerFlag);
+			TimerFlag = 0;
+		}
+		i = 0;
 		
     }
 }
