@@ -1,7 +1,7 @@
 /* Partner(s) Name & E-mail: Robert Arenas, raren003@ucr.edu
 * Lab Section: 022
 * Assignment: Final Project
-* Exercise Description: Learning to use a shift register for final project
+* Exercise Description: CS120B Final Project
 *
 * I acknowledge all content contained herein, excluding template or example
 * code, is my own original work.

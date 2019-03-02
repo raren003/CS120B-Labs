@@ -1,9 +1,12 @@
-/*
- * shiftreg_write.h
- *
- * Created: 3/2/2019 10:20:16 AM
- *  Author: Rob
- */ 
+/* Partner(s) Name & E-mail: Robert Arenas, raren003@ucr.edu
+* Lab Section: 022
+* Assignment: Final Project
+* Exercise Description: Header file that contains code that controls output
+*						to the shift register
+*
+* I acknowledge all content contained herein, excluding template or example
+* code, is my own original work.
+*/
 
 
 #ifndef SHIFTREG_WRITE_H_
