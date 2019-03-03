@@ -11,7 +11,7 @@
 #include <avr/common.h>
 #include <avr/interrupt.h>
 #include "shiftreg_write.h"
-#include "io.c"
+#include "io.h"
 
 
 typedef struct task {
@@ -26,8 +26,11 @@ const unsigned short tasksNum = 1;
 const unsigned long taskPeriodGCD = 300;
 const unsigned long periodEnemyLED = 300;
 
-	
+/////////////////////////////////
+////////SHARED VARIABLES////////////////////////////////////
+////////////////////////////////
 unsigned char currentLED = 0x00;
+unsigned char button = 0x00; //used to check which button is being pressed based on the value
 
 enum ENEMYLED_STATES {EL_START, EL_INIT, EL_NEXTLED, EL_SELECTPRESS, EL_LEDLIT};
 int TickFct_EnemyLED(int state){
@@ -42,26 +45,26 @@ int TickFct_EnemyLED(int state){
 			break;
 			
 		case EL_NEXTLED:
-			if (!(~PINA & 0x01)){
+			if (!(button & 0x01)){
 				state = EL_NEXTLED;
-			} else if (~PINA & 0x01){
+			} else if (button & 0x01){
 				state = EL_SELECTPRESS;
 			}
 			break;
 			
 		case EL_SELECTPRESS:
-			if (~PINA & 0x01){
+			if (button & 0x01){
 				state = EL_SELECTPRESS;
-			}else if (!(~PINA & 0x01)){
+			}else if (!(button & 0x01)){
 				state = EL_LEDLIT;
 			}
 			break;
 			
 		case  EL_LEDLIT:
-			if (!(~PINA & 0x01))
+			if (!(button & 0x01))
 			{
 				state = EL_LEDLIT;
-			}else if (~PINA & 0x01){
+			}else if (button & 0x01){
 				state = EL_NEXTLED;
 			}
 			break;
@@ -186,6 +189,17 @@ int main(void)
 {
 	DDRA = 0x00; PORTA = 0xFF;	// Configure port A's 8 pins as inputs
 	DDRB = 0xFF; PORTB = 0x00; // PORTB set to output, outputs init 0s
+	DDRC = 0xFF; PORTC = 0x00;	//LCD data lines
+	DDRD = 0xFF; PORTD = 0x00;	//LCD control lines
+	
+	unsigned char swordChar[8] = { 0x04, 0x04, 0x04, 0x04, 0x0E, 0x15, 0x04, 0x04 };
+	
+	LCD_init();
+	
+	LCD_Custom(0, swordChar);
+	
+	LCD_Cursor(1);
+	LCD_WriteData(0);
 	
 	unsigned char i = 0;
 	tasks[i].state = EL_START;
@@ -199,6 +213,7 @@ int main(void)
     
     while (1) 
     {
+		button = ~PINA;
     }
 }
 
