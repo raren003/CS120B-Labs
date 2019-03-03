@@ -21,16 +21,20 @@ typedef struct task {
 	int (*TickFct)(int);
 } task;
 
-task tasks[1];
-const unsigned short tasksNum = 1;
-const unsigned long taskPeriodGCD = 300;
-const unsigned long periodEnemyLED = 300;
+task tasks[3];
+const unsigned short tasksNum = 3;
+const unsigned long taskPeriodGCD = 200;
+const unsigned long periodEnemyLED = 200;
+const unsigned long periodPauseGame = 200;
+const unsigned long periodPauseScreen = 400;
+
 
 /////////////////////////////////
 ////////SHARED VARIABLES////////////////////////////////////
 ////////////////////////////////
 unsigned char currentLED = 0x00;
 unsigned char button = 0x00; //used to check which button is being pressed based on the value
+unsigned char gameplayPaused = 0x00; //used to paude game
 
 enum ENEMYLED_STATES {EL_START, EL_INIT, EL_NEXTLED, EL_SELECTPRESS, EL_LEDLIT};
 int TickFct_EnemyLED(int state){
@@ -53,10 +57,12 @@ int TickFct_EnemyLED(int state){
 			break;
 			
 		case EL_SELECTPRESS:
-			if (button & 0x01){
+			if (button & 0x01 && !gameplayPaused){
 				state = EL_SELECTPRESS;
-			}else if (!(button & 0x01)){
+			}else if (!(button & 0x01) && !gameplayPaused){
 				state = EL_LEDLIT;
+			}else if (gameplayPaused){
+				state = EL_NEXTLED;
 			}
 			break;
 			
@@ -81,18 +87,21 @@ int TickFct_EnemyLED(int state){
 		case EL_INIT:
 			currentLED = 0x01;
 			transmit_data(currentLED);
+			gameplayPaused = 1;
 			break;
 		
 		case EL_NEXTLED:
-			if (currentLED == 0x80) //go back to led 1 after 3 is lit
-			{
-				currentLED = 0x01;
+			if(!gameplayPaused){
+				if (currentLED == 0x80) //go back to led 1 after 3 is lit
+				{
+					currentLED = 0x01;
+				}
+				else //shift to move to next led
+				{
+					currentLED = currentLED << 1;
+				}
+				transmit_data(currentLED);
 			}
-			else //shift to move to next led
-			{
-				currentLED = currentLED << 1;
-			}
-			transmit_data(currentLED);
 			break;
 		
 		case EL_SELECTPRESS:
@@ -110,6 +119,100 @@ int TickFct_EnemyLED(int state){
 	
 	return state;
 };
+
+enum PAUSEGAME_STATES{PauseGame_Start, PauseGame_Wait, PauseGame_PausePress, PauseGame_PauseRelease, PauseGame_RestartPress};
+int TickFct_PauseGame(int state) {
+	
+	switch(state){			//Transitions
+		case PauseGame_Start:
+			state = PauseGame_Wait;
+			break;
+			
+		case PauseGame_Wait:
+			if (!(button & 0x02)){
+				state = PauseGame_Wait;
+			}else if(button & 0x02){
+				state = PauseGame_PausePress;
+			}
+			break;
+			
+		case PauseGame_PausePress:
+			if (!(button & 0x02)){
+				state = PauseGame_PauseRelease;
+			}else if(button & 0x02){
+				state = PauseGame_PausePress;
+				gameplayPaused = 1;
+			}
+			break;
+			
+		case PauseGame_PauseRelease:
+			if (!(button & 0x02)){
+				state = PauseGame_PauseRelease;
+			}else if (button & 0x02){
+				state = PauseGame_RestartPress;
+			}
+			break;
+			
+		case PauseGame_RestartPress:
+			if (!(button & 0x02)){
+				state = PauseGame_Wait;
+				gameplayPaused = 0;
+				LCD_ClearScreen();
+			}else if (button & 0x02){
+				state = PauseGame_RestartPress;
+			}
+			break;
+			
+		default:
+			break;
+	}						//Transitions
+	
+	return state;
+}
+
+//PAUSESCREEN local variables	
+unsigned char* LCD_Output_PauseScreen = "PRESS START";						
+
+enum PAUSESCREEN_STATES{PauseScreen_start, PauseScreen_display};
+int TickFct_PauseScreen(int state) {
+	
+	switch(state){			//Transitions
+		case PauseScreen_start:
+			state = PauseScreen_display;
+			break;
+			
+		case PauseScreen_display:
+			state = PauseScreen_display;
+			if (gameplayPaused==1){
+				LCD_DisplayString(1, LCD_Output_PauseScreen);
+				LCD_Cursor(13);
+				LCD_WriteData(0);
+			}
+			break;
+			
+		default:
+			break;
+		
+	}						//Transitions
+	
+	switch(state){			//State Actions
+		case PauseScreen_start:
+			break;
+		
+		case PauseScreen_display:
+			/*if (gameplayPaused){
+				LCD_DisplayString(1, LCD_Output_PauseScreen);
+				LCD_Cursor(13);
+				LCD_WriteData(0);
+			}*/
+			break;
+		
+		default:
+			break;
+	}						//State Actions
+	
+	return state;
+}
 
 ///////////////////////////////////////////////////////////////
 ////////////FUNCTIONS FOR THE TIMER////////////////////////////
@@ -198,8 +301,8 @@ int main(void)
 	
 	LCD_Custom(0, swordChar);
 	
-	LCD_Cursor(1);
-	LCD_WriteData(0);
+	//LCD_Cursor(1);
+	//LCD_WriteData(0);
 	
 	unsigned char i = 0;
 	tasks[i].state = EL_START;
@@ -207,6 +310,16 @@ int main(void)
 	tasks[i].elapsedTime = 0;
 	tasks[i].TickFct = &TickFct_EnemyLED;
 	i++;
+	tasks[i].state = PauseGame_Start;
+	tasks[i].period = periodPauseGame;
+	tasks[i].elapsedTime = 0;
+	tasks[i].TickFct = &TickFct_PauseGame;
+	i++;
+	tasks[i].state = PauseScreen_start;
+	tasks[i].period = periodPauseScreen;
+	tasks[i].elapsedTime = 0;
+	tasks[i].TickFct = &TickFct_PauseScreen;
+	
 	
 	TimerSet(taskPeriodGCD);
 	TimerOn();
