@@ -9,6 +9,7 @@
 
 #include <avr/io.h>
 #include <avr/common.h>
+#include <stdlib.h>
 #include <avr/interrupt.h>
 #include "shiftreg_write.h"
 #include "io.h"
@@ -34,7 +35,14 @@ const unsigned long periodPauseScreen = 400;
 ////////////////////////////////
 unsigned char currentLED = 0x00;
 unsigned char button = 0x00; //used to check which button is being pressed based on the value
-unsigned char gameplayPaused = 0x00; //used to paude game
+unsigned char gameplayPaused = 0x00; //used to pause 
+
+/////////////////////////////////
+////////EnemyLED local variables////////////////////////////////////
+////////////////////////////////
+unsigned char enemyAttack  = 0;
+const unsigned char playerAttack = 6;
+unsigned char* battleScreen_String = "E-attk          P-attk";
 
 enum ENEMYLED_STATES {EL_START, EL_INIT, EL_NEXTLED, EL_SELECTPRESS, EL_LEDLIT};
 int TickFct_EnemyLED(int state){
@@ -92,7 +100,7 @@ int TickFct_EnemyLED(int state){
 		
 		case EL_NEXTLED:
 			if(!gameplayPaused){
-				if (currentLED == 0x80) //go back to led 1 after 3 is lit
+				if (currentLED == 0x80) //go back to led 1 after 8 is lit
 				{
 					currentLED = 0x01;
 				}
@@ -106,10 +114,24 @@ int TickFct_EnemyLED(int state){
 		
 		case EL_SELECTPRESS:
 			transmit_data(currentLED);
+			if (currentLED == 0x01 || currentLED == 0x20 || currentLED == 0x40){
+				enemyAttack = (unsigned char) (rand()%(5-1)+1);
+			}else if (currentLED == 0x02 || currentLED == 0x10 || currentLED == 0x80){
+				enemyAttack = (unsigned char) (rand()%(7-3)+3);
+			}else if (currentLED == 0x04 || currentLED == 0x08){
+				enemyAttack = (unsigned char) (rand()%(9-7)+7);
+			}
 			break;
 		
 		case  EL_LEDLIT:
 			transmit_data(currentLED);
+			
+			
+			
+			LCD_DisplayString(1, battleScreen_String);
+			LCD_Cursor(24); LCD_WriteData(playerAttack+'0');
+			LCD_Cursor(8); LCD_WriteData(enemyAttack+'0');
+			
 			break;
 		
 		default:
