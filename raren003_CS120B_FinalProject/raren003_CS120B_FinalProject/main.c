@@ -69,6 +69,10 @@ int TickFct_EnemyLED(int state){
 				state = EL_SELECTPRESS;
 			}else if (!(button & 0x01) && !gameplayPaused){
 				state = EL_LEDLIT;
+				
+				LCD_DisplayString(1, battleScreen_String);
+				LCD_Cursor(24); LCD_WriteData(playerAttack+'0');
+				LCD_Cursor(8); LCD_WriteData(enemyAttack+'0');
 			}else if (gameplayPaused){
 				state = EL_NEXTLED;
 			}
@@ -125,13 +129,6 @@ int TickFct_EnemyLED(int state){
 		
 		case  EL_LEDLIT:
 			transmit_data(currentLED);
-			
-			
-			
-			LCD_DisplayString(1, battleScreen_String);
-			LCD_Cursor(24); LCD_WriteData(playerAttack+'0');
-			LCD_Cursor(8); LCD_WriteData(enemyAttack+'0');
-			
 			break;
 		
 		default:
