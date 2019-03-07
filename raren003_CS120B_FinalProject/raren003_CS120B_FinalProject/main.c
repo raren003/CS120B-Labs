@@ -43,8 +43,11 @@ unsigned char gameplayPaused = 0x00; //used to pause
 unsigned char enemyAttack  = 0;
 const unsigned char playerAttack = 6;
 unsigned char* battleScreen_String = "E-attk          P-attk";
+unsigned char* battleOutcome1_String = "You Won";
+unsigned char* battleOutcome2_String = "You Lost";
+unsigned char* battleOutcome3_String = "Draw";
 
-enum ENEMYLED_STATES {EL_START, EL_INIT, EL_NEXTLED, EL_SELECTPRESS, EL_LEDLIT};
+enum ENEMYLED_STATES {EL_START, EL_INIT, EL_NEXTLED, EL_SELECTPRESS, EL_LEDLIT, EL_BATTLE, EL_RUN};
 int TickFct_EnemyLED(int state){
 	
 	switch (state){			//transitions
@@ -79,10 +82,37 @@ int TickFct_EnemyLED(int state){
 			break;
 			
 		case  EL_LEDLIT:
-			if (!(button & 0x01))
+			if (!(button & 0x01) && !(button & 0x04) && !(button & 0x08)) //!A0 && !A1 && !A3
 			{
 				state = EL_LEDLIT;
-			}else if (button & 0x01){
+			}else if (!(button & 0x01) && (button & 0x04) && !(button & 0x08)){
+				state = EL_BATTLE;
+				if (playerAttack > enemyAttack){
+					LCD_DisplayString(1, battleOutcome1_String);
+				}else if (playerAttack < enemyAttack){
+					LCD_DisplayString(1, battleOutcome2_String);
+				}else if (playerAttack == enemyAttack){
+					LCD_DisplayString(1, battleOutcome3_String);
+				}
+				
+			}else if (!(button & 0x01) && !(button & 0x04) && (button & 0x08)){
+				state = EL_RUN;
+				LCD_DisplayString(1, "Ran");
+			}
+			break;
+			
+		case EL_BATTLE:
+			if (button & 0x04){
+				state = EL_BATTLE;
+			}else if (!(button & 0x04)){
+				state = EL_NEXTLED;
+			}
+			break;
+			
+		case EL_RUN:
+			if (button & 0x08){
+				state = EL_RUN;
+			}else if (!(button & 0x08)){
 				state = EL_NEXTLED;
 			}
 			break;
@@ -129,6 +159,12 @@ int TickFct_EnemyLED(int state){
 		
 		case  EL_LEDLIT:
 			transmit_data(currentLED);
+			break;
+			
+		case  EL_BATTLE:
+			break;
+			
+		case  EL_RUN:
 			break;
 		
 		default:
