@@ -11,8 +11,31 @@
 #include <avr/common.h>
 #include <avr/interrupt.h>
 #include "usart.h"
-#include "shiftreg_write.h"
 
+#define SHIFTREGPORT PORTB
+
+void transmit_data(unsigned char data){
+	
+	unsigned char i;
+	
+	
+	//for each bit of data
+	for (i = 0; i < 8; i++){
+		//Set SRCLR to 1 allowing data to be set
+		//Also clear SRCLK in preparation of sending  data
+		SHIFTREGPORT = 0x08;
+		//set SER = next bit of data to be sent
+		SHIFTREGPORT |= ((data >> i) & 0x01);
+		//set SRCLK = 1. Rising edge shifts next bit of data into the shifts register
+		SHIFTREGPORT |= 0x04;
+		
+	}	//end for each bit of data
+	
+	//set RCLK = 1. Rising edge copies data from the "Shift" register to the "Storage" Register
+	SHIFTREGPORT |= 0x02;
+	//clear all lines in preparation of new data transmission
+	SHIFTREGPORT = 0x00;
+}
 
 typedef struct task {
 	int state;
@@ -27,7 +50,8 @@ const unsigned long taskPeriodGCD = 1000;
 const unsigned long taskPeriodFollow = 1000;
 
 
-unsigned char temp;
+unsigned char lives;
+unsigned char temp2;
 
 enum Leader_STATES {leadr_start, leadr_ON, leadr_OFF};
 int TickFct_Leader(int state){
@@ -54,26 +78,38 @@ int TickFct_Leader(int state){
 	switch(state){			//State actions
 		
 		case leadr_start:
+			temp2 = 0x0F;
+			lives = 4;
 		break;
 		
 		case  leadr_ON:
-			if(USART_IsSendReady(0)){
-				USART_Send(0x01, 0);
-				transmit_data(0x01);
-				USART_Flush(0);
+				
+			if(USART_IsSendReady()){
+				USART_Send(temp2);
+				transmit_data(temp2);
+				USART_Flush();
 			}
 			break;
 		
 		case leadr_OFF:
-			if(USART_IsSendReady(0)){
-				USART_Send(0x00, 0);
+		/*
+			if(USART_IsSendReady()){
+				USART_Send(0x00);
 				transmit_data(0x00);
-				USART_Flush(0);
+				USART_Flush();
+			}
+		*/
+			if (lives > 0){
+				lives--;
+				temp2 = temp2 >> 1;
+			}else{
+				lives = 4;
+				temp2 = 0x0F;
 			}
 			break;
 		
 		default:
-		break;
+			break;
 		
 	}						//State Actions
 	
@@ -155,11 +191,12 @@ ISR(TIMER1_COMPA_vect)
 }
 
 
+
 int main(void)
 {
 	DDRB = 0xFF; PORTB = 0x00; //set B as output
 	
-	initUSART(0);
+	initUSART();
 	
 	unsigned char i = 0;
 	tasks[i].state = leadr_start;

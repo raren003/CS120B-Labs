@@ -52,10 +52,10 @@ int TickFct_FOLLOWER(int state){
 		break;
 		
 		case  FOLW_ON:
-			if (USART_HasReceived(0)){
-				temp = USART_Receive(0);
+			if (USART_HasReceived()){
+				temp = USART_Receive();
 				PORTB = temp;
-				USART_Flush(0);
+				USART_Flush();
 			}
 		break;
 		
@@ -146,7 +146,7 @@ int main(void)
 {
 	DDRB = 0xFF; PORTB = 0x00; //set B as output
 	
-	initUSART(0);
+	initUSART();
 	
 	unsigned char i = 0;
 	tasks[i].state = FOLW_start;
