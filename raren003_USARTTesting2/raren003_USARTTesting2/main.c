@@ -51,7 +51,7 @@ const unsigned long taskPeriodFollow = 1000;
 
 
 unsigned char lives;
-unsigned char temp2;
+//unsigned char temp2;
 
 enum Leader_STATES {leadr_start, leadr_ON, leadr_OFF};
 int TickFct_Leader(int state){
@@ -78,15 +78,15 @@ int TickFct_Leader(int state){
 	switch(state){			//State actions
 		
 		case leadr_start:
-			temp2 = 0x0F;
-			lives = 4;
+			//temp2 = 4;
+			lives = 9;
 		break;
 		
 		case  leadr_ON:
 				
 			if(USART_IsSendReady()){
-				USART_Send(temp2);
-				transmit_data(temp2);
+				USART_Send(lives);
+				transmit_data(lives);
 				USART_Flush();
 			}
 			break;
@@ -101,10 +101,10 @@ int TickFct_Leader(int state){
 		*/
 			if (lives > 0){
 				lives--;
-				temp2 = temp2 >> 1;
+				//temp2 = temp2 >> 1;
 			}else{
-				lives = 4;
-				temp2 = 0x0F;
+				lives = 9;
+				//temp2 = 0x0F;
 			}
 			break;
 		

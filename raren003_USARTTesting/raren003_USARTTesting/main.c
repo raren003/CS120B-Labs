@@ -12,6 +12,49 @@
 #include <avr/interrupt.h>
 #include "usart.h"
 
+//PORT connected to 7 segment diode
+//A-pin0, B-pin1, C-pin2, D-pin3, E-pin4, F-pin5, G-pin6, DP-pin7
+#define SSEGPORT PORTB
+
+void sseg_write(unsigned char data){
+	switch(data){
+		case 0:
+			SSEGPORT = 0xC0;
+			break;
+		case 1:
+			SSEGPORT = 0xF9;
+			break;
+		case 2:
+			SSEGPORT = 0xA4;
+			break;
+		case 3:
+			SSEGPORT = 0xb0;
+			break;
+		case 4:
+			SSEGPORT = 0x99;
+			break;
+		case 5:
+			SSEGPORT = 0x92;
+			break;
+		case 6:
+			SSEGPORT = 0x82;
+			break;
+		case 7:
+			SSEGPORT = 0xF8;
+			break;
+		case 8:
+			SSEGPORT = 0x80;
+			break;
+		case 9:
+			SSEGPORT = 0x98;
+			break;
+		default:
+			SSEGPORT = 0x83;
+			break;
+	}
+	
+}
+
 
 typedef struct task {
 	int state;
@@ -54,7 +97,7 @@ int TickFct_FOLLOWER(int state){
 		case  FOLW_ON:
 			if (USART_HasReceived()){
 				temp = USART_Receive();
-				PORTB = temp;
+				sseg_write(temp);
 				USART_Flush();
 			}
 		break;
