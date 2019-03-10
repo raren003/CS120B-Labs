@@ -9,6 +9,7 @@
 
 #include <avr/io.h>
 #include <avr/common.h>
+#include <avr/eeprom.h>
 #include <stdlib.h>
 #include <string.h>
 #include <avr/interrupt.h>
@@ -42,6 +43,10 @@ unsigned char gameplayPaused = 0x00; //used to pause
 unsigned char playerLives = 0x00; // how many lives the player has left 
 unsigned char gameOver = 0x00; //used to detect if game is over
 unsigned int playerScore = 0x00;
+unsigned int EEMEM highScore;
+unsigned int readHighScore;
+char buffer[20];
+
 
 
 //utility function used to send lives to second micro-controller to 
@@ -286,7 +291,7 @@ int TickFct_PauseGame(int state) {
 }
 
 //PAUSESCREEN local variables	
-unsigned char* LCD_Output_PauseScreen = "PRESS START";						
+unsigned char* LCD_Output_PauseScreen = "PRESS START     H-Score: ";						
 
 enum PAUSESCREEN_STATES{PauseScreen_start, PauseScreen_display};
 int TickFct_PauseScreen(int state) {
@@ -298,8 +303,14 @@ int TickFct_PauseScreen(int state) {
 			
 		case PauseScreen_display:
 			state = PauseScreen_display;
+			readHighScore = eeprom_read_word(&highScore);
+			
 			if (gameplayPaused==1){
-				LCD_DisplayString(1, LCD_Output_PauseScreen);
+				//convert score to string
+				itoa(readHighScore,buffer,10);
+				//output score
+				LCD_DisplayString(1, scoreDisplay(LCD_Output_PauseScreen, buffer));
+
 				LCD_Cursor(13);
 				LCD_WriteData(0);
 			}
@@ -325,7 +336,8 @@ int TickFct_PauseScreen(int state) {
 }
 
 //GAMEOVER local variables
-unsigned char* LCD_Output_GameOver = "Game Over";
+unsigned char* LCD_Output_GameOver = "Game Over       Score ";
+
 
 enum GAMEOVER_STATES{GAMEOVER_START, GAMEOVER_WAIT, GAMEOVER_DISPLAY, GAMEOVER_RESTART};
 int TickFct_GameOver(int state) {
@@ -339,7 +351,10 @@ int TickFct_GameOver(int state) {
 			if (playerLives == 0){
 				state = GAMEOVER_DISPLAY;
 				gameOver = 1;
-				LCD_DisplayString(1, LCD_Output_GameOver);
+				//convert score to string
+				itoa(playerScore,buffer,10);
+				//output score
+				LCD_DisplayString(1, scoreDisplay(LCD_Output_GameOver, buffer));
 			}else if (playerLives != 0){
 				state = GAMEOVER_WAIT;
 			}
@@ -357,11 +372,17 @@ int TickFct_GameOver(int state) {
 			if (button & 0x02){
 				state = GAMEOVER_RESTART;
 			}else if(!(button & 0x02)){
+				
+				readHighScore = eeprom_read_word(&highScore);
+				if (playerScore > readHighScore){
+					eeprom_write_word(&highScore, playerScore);
+				}
 				state = GAMEOVER_WAIT;
 				playerLives = 8;
 				gameOver = 0;
 				gameplayPaused = 1;
 				usart_sendPlayerLives(playerLives);
+				playerScore = 0;
 			}
 			break;
 			
@@ -457,12 +478,16 @@ int main(void)
 	DDRC = 0xFF; PORTC = 0x00;	//LCD data lines
 	DDRD = 0xFF; PORTD = 0x00;	//LCD control lines
 	
+	//array for creating custom character
 	unsigned char swordChar[8] = { 0x04, 0x04, 0x04, 0x04, 0x0E, 0x15, 0x04, 0x04 };
+	
+	//uncomment this to erase stored high score
+	//eeprom_write_word(&highScore, 0);
 	
 	initUSART();
 	LCD_init();
 	
-	LCD_Custom(0, swordChar);
+	LCD_Custom(0, swordChar); //
 	
 	//LCD_Cursor(1);
 	//LCD_WriteData(0);
