@@ -10,9 +10,11 @@
 #include <avr/io.h>
 #include <avr/common.h>
 #include <stdlib.h>
+#include <string.h>
 #include <avr/interrupt.h>
 #include "shiftreg_write.h"
 #include "io.h"
+#include "usart.h"
 
 
 typedef struct task {
@@ -22,12 +24,13 @@ typedef struct task {
 	int (*TickFct)(int);
 } task;
 
-task tasks[3];
-const unsigned short tasksNum = 3;
+task tasks[4];
+const unsigned short tasksNum = 4;
 const unsigned long taskPeriodGCD = 200;
 const unsigned long periodEnemyLED = 200;
 const unsigned long periodPauseGame = 200;
 const unsigned long periodPauseScreen = 400;
+const unsigned long periodGameOver = 200;
 
 
 /////////////////////////////////
@@ -35,7 +38,27 @@ const unsigned long periodPauseScreen = 400;
 ////////////////////////////////
 unsigned char currentLED = 0x00;
 unsigned char button = 0x00; //used to check which button is being pressed based on the value
-unsigned char gameplayPaused = 0x00; //used to pause 
+unsigned char gameplayPaused = 0x00; //used to pause
+unsigned char playerLives = 0x00; // how many lives the player has left 
+unsigned char gameOver = 0x00; //used to detect if game is over
+unsigned int playerScore = 0x00;
+
+
+//utility function used to send lives to second micro-controller to 
+//display lives on 7 segment display
+void usart_sendPlayerLives(unsigned char lives){
+	if (USART_IsSendReady()){
+		USART_Send(lives);
+		USART_Flush();
+	}
+}
+//utility function used to output player score to LCD
+char* scoreDisplay(const* string1, const* string2){
+	char *scoreOutput = malloc(strlen(string1) + strlen(string2) + 1);
+	strcpy(scoreOutput, string1);
+	strcat(scoreOutput, string2);
+	return scoreOutput;
+}
 
 /////////////////////////////////
 ////////EnemyLED local variables////////////////////////////////////
@@ -43,9 +66,11 @@ unsigned char gameplayPaused = 0x00; //used to pause
 unsigned char enemyAttack  = 0;
 const unsigned char playerAttack = 6;
 unsigned char* battleScreen_String = "E-attk          P-attk";
-unsigned char* battleOutcome1_String = "You Won";
-unsigned char* battleOutcome2_String = "You Lost";
-unsigned char* battleOutcome3_String = "Draw";
+unsigned char* battleOutcome1_String = "You won         Score ";
+unsigned char* battleOutcome2_String = "You Lost        Score ";
+unsigned char* battleOutcome3_String = "Draw            Score ";
+char buffer[20];
+
 
 enum ENEMYLED_STATES {EL_START, EL_INIT, EL_NEXTLED, EL_SELECTPRESS, EL_LEDLIT, EL_BATTLE, EL_RUN};
 int TickFct_EnemyLED(int state){
@@ -68,15 +93,15 @@ int TickFct_EnemyLED(int state){
 			break;
 			
 		case EL_SELECTPRESS:
-			if (button & 0x01 && !gameplayPaused){
+			if (button & 0x01 && !gameplayPaused && !gameOver){
 				state = EL_SELECTPRESS;
-			}else if (!(button & 0x01) && !gameplayPaused){
+			}else if (!(button & 0x01) && !gameplayPaused && !gameOver){
 				state = EL_LEDLIT;
 				
 				LCD_DisplayString(1, battleScreen_String);
 				LCD_Cursor(24); LCD_WriteData(playerAttack+'0');
 				LCD_Cursor(8); LCD_WriteData(enemyAttack+'0');
-			}else if (gameplayPaused){
+			}else if (gameplayPaused || gameOver){
 				state = EL_NEXTLED;
 			}
 			break;
@@ -88,16 +113,45 @@ int TickFct_EnemyLED(int state){
 			}else if (!(button & 0x01) && (button & 0x04) && !(button & 0x08)){
 				state = EL_BATTLE;
 				if (playerAttack > enemyAttack){
-					LCD_DisplayString(1, battleOutcome1_String);
+					//increase score for winning
+					playerScore = playerScore + 10;
+					//convert score to string
+					itoa(playerScore,buffer,10);
+					//output score
+					LCD_DisplayString(1, scoreDisplay(battleOutcome1_String, buffer));
 				}else if (playerAttack < enemyAttack){
-					LCD_DisplayString(1, battleOutcome2_String);
+					
+					//decrease score for losing
+					if (playerScore > 5){
+						playerScore = playerScore -5;
+					}else if (playerScore <= 5){
+						playerScore = 0;
+					}
+					
+					//convert score to string
+					itoa(playerScore,buffer,10);
+					
+					//output score
+					LCD_DisplayString(1, scoreDisplay(battleOutcome2_String, buffer));
+					//decrease lives
+					if(playerLives > 0){
+						playerLives--;
+					}
 				}else if (playerAttack == enemyAttack){
-					LCD_DisplayString(1, battleOutcome3_String);
+					//convert score to string
+					itoa(playerScore,buffer,10);
+					//output score
+					LCD_DisplayString(1, scoreDisplay(battleOutcome3_String, buffer));
 				}
 				
 			}else if (!(button & 0x01) && !(button & 0x04) && (button & 0x08)){
 				state = EL_RUN;
 				LCD_DisplayString(1, "Ran");
+				if (playerLives > 2){
+					playerLives = playerLives - 2;
+				}else if (playerLives <= 2){
+					playerLives = 0;
+				}
 			}
 			break;
 			
@@ -130,6 +184,10 @@ int TickFct_EnemyLED(int state){
 			currentLED = 0x01;
 			transmit_data(currentLED);
 			gameplayPaused = 1;
+			gameOver = 0;
+			playerLives = 8;
+			playerScore = 0;
+			usart_sendPlayerLives(playerLives);
 			break;
 		
 		case EL_NEXTLED:
@@ -162,9 +220,11 @@ int TickFct_EnemyLED(int state){
 			break;
 			
 		case  EL_BATTLE:
+			usart_sendPlayerLives(playerLives);
 			break;
 			
 		case  EL_RUN:
+			usart_sendPlayerLives(playerLives);
 			break;
 		
 		default:
@@ -255,11 +315,6 @@ int TickFct_PauseScreen(int state) {
 			break;
 		
 		case PauseScreen_display:
-			/*if (gameplayPaused){
-				LCD_DisplayString(1, LCD_Output_PauseScreen);
-				LCD_Cursor(13);
-				LCD_WriteData(0);
-			}*/
 			break;
 		
 		default:
@@ -267,6 +322,58 @@ int TickFct_PauseScreen(int state) {
 	}						//State Actions
 	
 	return state;
+}
+
+//GAMEOVER local variables
+unsigned char* LCD_Output_GameOver = "Game Over";
+
+enum GAMEOVER_STATES{GAMEOVER_START, GAMEOVER_WAIT, GAMEOVER_DISPLAY, GAMEOVER_RESTART};
+int TickFct_GameOver(int state) {
+	
+	switch(state){			//Transitions
+		case GAMEOVER_START:
+			state = GAMEOVER_WAIT;
+			break;
+			
+		case GAMEOVER_WAIT:
+			if (playerLives == 0){
+				state = GAMEOVER_DISPLAY;
+				gameOver = 1;
+				LCD_DisplayString(1, LCD_Output_GameOver);
+			}else if (playerLives != 0){
+				state = GAMEOVER_WAIT;
+			}
+			break;
+			
+		case GAMEOVER_DISPLAY:
+			if (!(button & 0x02)){
+				state = GAMEOVER_DISPLAY;
+			}else if (button & 0x02){
+				state = GAMEOVER_RESTART;
+			}
+			break;
+			
+		case GAMEOVER_RESTART:
+			if (button & 0x02){
+				state = GAMEOVER_RESTART;
+			}else if(!(button & 0x02)){
+				state = GAMEOVER_WAIT;
+				playerLives = 8;
+				gameOver = 0;
+				gameplayPaused = 1;
+				usart_sendPlayerLives(playerLives);
+			}
+			break;
+			
+		default:
+			break;
+	}						//Transitions
+	
+	switch(state){			//State Actions
+	}
+	
+	return state;			//State Actions
+	
 }
 
 ///////////////////////////////////////////////////////////////
@@ -352,6 +459,7 @@ int main(void)
 	
 	unsigned char swordChar[8] = { 0x04, 0x04, 0x04, 0x04, 0x0E, 0x15, 0x04, 0x04 };
 	
+	initUSART();
 	LCD_init();
 	
 	LCD_Custom(0, swordChar);
@@ -374,6 +482,11 @@ int main(void)
 	tasks[i].period = periodPauseScreen;
 	tasks[i].elapsedTime = 0;
 	tasks[i].TickFct = &TickFct_PauseScreen;
+	i++;
+	tasks[i].state = GAMEOVER_START;
+	tasks[i].period = periodGameOver;
+	tasks[i].elapsedTime = 0;
+	tasks[i].TickFct = &TickFct_GameOver;
 	
 	
 	TimerSet(taskPeriodGCD);
