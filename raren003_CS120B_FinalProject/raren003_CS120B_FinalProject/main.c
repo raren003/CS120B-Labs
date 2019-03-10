@@ -74,6 +74,7 @@ unsigned char* battleScreen_String = "E-attk          P-attk";
 unsigned char* battleOutcome1_String = "You won         Score ";
 unsigned char* battleOutcome2_String = "You Lost        Score ";
 unsigned char* battleOutcome3_String = "Draw            Score ";
+unsigned char* battleOutcome4_String = "Ran             Score ";
 char buffer[20];
 
 
@@ -151,7 +152,10 @@ int TickFct_EnemyLED(int state){
 				
 			}else if (!(button & 0x01) && !(button & 0x04) && (button & 0x08)){
 				state = EL_RUN;
-				LCD_DisplayString(1, "Ran");
+				//convert score to string
+				itoa(playerScore,buffer,10);
+				//output score
+				LCD_DisplayString(1, scoreDisplay(battleOutcome4_String, buffer));
 				if (playerLives > 2){
 					playerLives = playerLives - 2;
 				}else if (playerLives <= 2){
@@ -293,28 +297,38 @@ int TickFct_PauseGame(int state) {
 //PAUSESCREEN local variables	
 unsigned char* LCD_Output_PauseScreen = "PRESS START     H-Score: ";						
 
-enum PAUSESCREEN_STATES{PauseScreen_start, PauseScreen_display};
+enum PAUSESCREEN_STATES{PauseScreen_start, PauseScreen_display_off, PauseScreen_display_on};
 int TickFct_PauseScreen(int state) {
 	
 	switch(state){			//Transitions
 		case PauseScreen_start:
-			state = PauseScreen_display;
+			state = PauseScreen_display_off;
 			break;
 			
-		case PauseScreen_display:
-			state = PauseScreen_display;
-			readHighScore = eeprom_read_word(&highScore);
-			
-			if (gameplayPaused==1){
-				//convert score to string
-				itoa(readHighScore,buffer,10);
-				//output score
-				LCD_DisplayString(1, scoreDisplay(LCD_Output_PauseScreen, buffer));
+		case PauseScreen_display_off:
+		
+			if (!gameplayPaused){
+				state = PauseScreen_display_off;
+			}else if(gameplayPaused){
+				state = PauseScreen_display_on;
+				readHighScore = eeprom_read_word(&highScore);
+					//convert score to string
+					itoa(readHighScore,buffer,10);
+					//output score
+					LCD_DisplayString(1, scoreDisplay(LCD_Output_PauseScreen, buffer));
 
-				LCD_Cursor(13);
-				LCD_WriteData(0);
+					LCD_Cursor(13);
+					LCD_WriteData(0);
 			}
 			break;
+			
+			case PauseScreen_display_on:
+				if (gameplayPaused){
+					state = PauseScreen_display_on;
+				}else if (!gameplayPaused){
+					state = PauseScreen_display_off;
+				}
+			
 			
 		default:
 			break;
@@ -325,7 +339,10 @@ int TickFct_PauseScreen(int state) {
 		case PauseScreen_start:
 			break;
 		
-		case PauseScreen_display:
+		case PauseScreen_display_off:
+			break;
+		
+		case PauseScreen_display_on:
 			break;
 		
 		default:
